@@ -1,0 +1,1439 @@
+select * from dept;
+
+create table test1(no number(3), name varchar2(10) not null);
+drop table test1;
+
+create table test(no number, name varchar2(10) not null);
+desc test;
+insert into test values(1, 'tom');
+insert into test values('2', 'james');
+insert into test values('2', 'oscar');
+insert into test(name) values('page');
+select * from test;
+
+drop table test;
+create table test(no number primary key, name varchar2(10) not null);
+-- primary key : not null, 중복불허 - 레코드는 유일하게 만든다.
+describe test;
+insert into test values(1, 'tom');
+insert into test values(2, 'tom');
+insert into test values(2, 'james');
+select * from test;
+drop table test;
+--테이블 작성
+create table test(no number(3) primary key, name varchar2(10) not null, tel varchar2(15), addr varchar2(30)); --char(10) 데이터 크기가 고정됨, varchar2(10)는 변할 수 있다.
+
+--자료 추가 : insert into 테이블명(칼럼명...) values(입력자료...)
+insert into test(no,name,tel,addr) values(1,'홍길동','111-1111','역삼1동');
+insert into test(tel,addr,no,name) values('222-1111','역삼1동',2,'홍길동2');
+insert into test values(3,'홍길동2','333-1111','역삼동3동');
+insert into test (no, name) values(4,'홍길동4');
+
+select * from test;
+-- insert error sample
+insert into test(no, name) values(4, '홍길동4'); -- no 는 중복 불가
+insert into test(no, name) values(5, '홍길동이란 아이가 우리아이라고 말하고 있는 이'); 
+insert into test(no, name) values(4000, '홍길동4'); -- no는 3자리
+insert into test(no, name, addr) values(5, '홍길동5'); -- 개수 불일치
+insert into test(no, name, addr) values('강남구', 5, '홍길동4'); -- 순서 불일치
+
+select * from test where no = 1;
+select * from test where name = '홍길동';
+
+-- 자료 수정 : update 테이블명 set 칼럼명=수정값...where 조건
+update test set name = '공기밥',addr='서초1동 123' where no = 1;
+update test set tel = '777-8888',addr='서초2동 123' where no = 4;
+update test set addr='서초2동 777',tel='777-9999' where no = 4;
+select * from test;
+update test set name = '공기밥이식어서딱딱하니' where no = 1;  --열에 대한 값이 너무 큼
+update test set name = null where no = 1; -- name : not null
+update test set no=10 where name='공기밥'; --에러는 아니나 pk칼럼은 수정에서 제외하자
+select * from test;
+
+--자료 삭제: delete from 테이블명 where 조건   : 전체 or 부분자료 삭제 :rollback가능
+--        : truncate table 테이블명   :  모든행 삭제 가능 : rollback불가능
+delete from test where no=2;
+delete from test;
+truncate table test;  --권장x 되돌릴 수 없기 때문이다.
+select * from test;
+
+drop table test;
+
+-- 무결성 제약조건 : 잘못된 자료의 입력을 방지하기위해 다양한 입력제한조건을 줄 수 있다.
+-- domain 제약조건 : 칼럼의 성격, 크기, null 허용 여부 등에 제약
+-- 기본키 제약조건 : primary key
+-- 사용자 제약조건 : check, unique, foreign key...
+
+-- 기본키 제약조건 : 특정 칼럼에 pk를 설정. 중복 레코드 불허. Null 불허. 
+-- 방법1) 칼럼 레벨
+create table aa(bun number primary key, irum char(10));
+desc aa;
+select table_name, constraint_type, constraint_name from user_constraints
+where table_name='AA'; --oracle 전용명령 - 제약조건 설정 확인
+insert into aa values(1, 'mouse');
+insert into aa values(1, 'keyboard'); -- err : pk
+drop table aa;
+
+-- 방법2) 이름을 부여한 칼럼 레벨
+create table aa(bun number constraint aa_bun_pk primary key, irum char(10));
+select table_name, constraint_type, constraint_name from user_constraints where table_name = 'AA';
+drop table aa;
+
+--방법3) 테이블 레벨
+create table aa(bun number, irum char(10), constraint aa_bun_pk primary key(bun));
+select table_name, constraint_type, constraint_name from user_constraints where table_name = 'AA';
+drop table aa;
+
+--제약조건 추가
+create table aa(bun number, irum char(10));
+alter table aa add constraint aa_bun_pk primary key(bun); -- pk 추가
+select table_name, constraint_type, constraint_name from user_constraints where table_name = 'AA';
+alter table aa drop constraint aa_bun_pk; -- pk 제거
+drop table aa;
+
+-- check 제약족건 : 입력되는 자료의 특정 칼럽값 검사
+create table aa(bun number, irum char(10), nai number(2) check(nai >= 20));
+select table_name, constraint_type, constraint_name from user_constraints
+where table_name='AA';
+insert into aa values(1,'tom',23);
+insert into aa values(2,'tom2',13); -- err : check 조건 위반
+drop table aa;
+
+--unique 제약조건 : 특정칼럼에 동일한 값 입력 불허
+create table aa(bun number, irum char(10) unique);
+insert into aa values(1, 'tom');
+insert into aa values(2, 'tom');  -- err : 중복 자료 불허
+drop table aa;
+
+-- foreign key 제약조건 : 외부키(참조키, FK) - 다른 테이블의 칼럼값을 참조.
+-- foreign key의 대상은 일반적으로 pk로 한다.
+-- on delete cascade : 부모 테이블의 행이 삭제되는 경우 자식 테이블의 종속행을 삭제
+create table jikwon(bun number primary key, irum varchar2(10), buser char(10));
+insert into jikwon values(1, '홍길동', '총무부');
+insert into jikwon values(2, '가나다', '총무부');
+insert into jikwon values(3, '홍길동', '영업부');
+select * from jikwon;
+
+create table gajok(code number primary key, name varchar2(10), birth date, jikwon_bun number references jikwon(bun));
+insert into gajok values(1000, '신선해', '2007-06-12',1);
+insert into gajok values(1001, '신선해', '2007-01-12',1);
+insert into gajok values(1002, '신선해', '2001-01-16',3);
+select * from gajok;
+
+drop table jikwon;
+delete from jikwon where bun = 1; --err : 참조대상 레코드
+delete from jikwon where bun = 2;
+select * from jikwon;
+
+drop table gajok;
+drop table jikwon;
+
+-- default : 특정칼럼에 초기값 부여
+create table aa(bun number, irum varchar2(10), juso varchar2(20) default '강남구 역삼동');
+insert into aa values(1, '홍길동', '서초구 서초동');
+insert into aa(bun, irum) values(2, '고길동');
+select * from aa;
+drop table aa;
+
+-- sequence : number 칼럼에 대해 숫자를 자동증가시키는 객체
+create table aa(bun number, irum char(10));
+create table bb(bunho number, irum char(10), nai number(20));
+
+create sequence bun_seq minvalue 0 increment by 1 start with 0;
+insert into aa values(bun_seq.nextval, '이기자');
+insert into aa values(bun_seq.nextval, '이겨라');
+select * from aa;
+select bun_seq.currval from dual; --현재 sequence가 가진 값
+insert into bb values(bun_seq.nextval, '김밥', 33);
+insert into bb values(bun_seq.nextval, '김치국', 23);
+insert into bb values(bun_seq.nextval, '마당쇠', 25);
+select * from bb;
+-- alter sequence 시퀀스명 수정할 내용
+-- drop sequence 시퀀스명
+drop sequence bun_seq;
+
+-----------------------
+create table professor(professor_code number primary key , professor_name varchar2(10), lab number(3) check (100 <= lab AND lab <= 500));
+insert into professor values(256, '박영철', 302);
+insert into professor values(132, '이영운', 401);
+create table classes(class_code number primary key, class_name varchar2(10) unique, book_name varchar2(10), professor_incharge number references professor(professor_code)); 
+insert into classes values(321, '이산수학', '뉴이산', 132);
+insert into classes values(785, '소프트웨어', 'software', 256);
+create sequence class_seq minvalue 0 increment by 1 start with 1;
+insert into class_code values(class_seq.nextval, '과목코드');
+create table students(students_code number primary key , students_name varchar2(10), students_class number references classes(class_code), grade number default 1);
+alter table students add constraints grade check(grade >= 1 AND grade <= 4);
+
+insert into students values(2017359, '이명철', 321, 2);
+insert into students values(2016011, '김가영', 785, 1); 
+insert into students(students_code, students_name, students_class) values(2016893, '전찬형', 785);
+select * from professor;
+select * from classes;
+select * from students;
+drop table students;
+drop table professor;
+
+--index(색인):검색 속도를 증진시키기 위해 칼럼에 색인을 부여
+--레코드 수가 많을 경우, join이 자주 등장하는 경우, null이 많이 포함된 경우...
+--입력, 수정, 삭제 등의 작업이 빈번한 경우에는 index가 오히려 속도저하를 일으킨다.
+drop table aa;
+create table aa(bun int primary key, irum varchar2(10), ibsail date);
+insert into aa values(1, '홍길동', sysdate); --sysdate는 프로그래머의 선택에 따른다.
+insert into aa values(2, '가나다', sysdate);
+insert into aa values(3, '홍두깨', sysdate);
+SELECT * from aa;
+create index ind_irum on aa(irum); --수동으로 인덱스 생성(여기선 non-unique)
+--create unique index ind_irum on aa(irum); -- unique index 생성 > 주민번호 등에 사용
+alter index ind_irum rebuild; -- 본문변경시 인덱스 리빌딩 필요함.
+SELECT index_name, table_name FROM USER_INDEXES WHERE
+table_name = 'AA';
+drop index ind_irum; -- 인덱스의 구조는 테이블과 독립적이므로 인덱스의 삭제는 테이블의 데이터에는 아무런 영향도 미치지 않는다.
+
+--테이블 명령
+create table 테이블명~
+alter table 테이블명~
+drop table 테이블명~
+rename old 이름 to new 이름;
+
+rename aa to kbs;
+select * from kbs; -- 테이블 명 수정 가능.
+
+-- 칼럼 관련 명령
+-- 칼럼 추가
+desc kbs;
+alter table kbs add(job_inwon number(5) default 100);
+select * from kbs; -- default 값인 100이 추가된 것을 확인가능.
+
+--칼럼 수정
+alter table kbs modify(job_inwon number(3)); --column to be modified must be empty to decrease precision or scale
+--즉, 축소의 경우 기존 데이터를 고려한다. (5 -> 3 축소를 하려고 한 경우임.)
+update kbs set job_inwon = null;
+select * from kbs; --null값이 입력된 것 확인가능. 이제 위에서 오류가 있던 문장을 실행가능하다.
+alter table kbs modify(job_inwon number(3)); -- 기존 자료가 없어졌으므로 축소가 가능하다.
+desc kbs;
+update kbs set job_inwon = 150 where bun > 0;
+select * from kbs;
+alter table kbs modify(job_inwon number(6)); -- 확장의 경우 늘 가능(이 경우: 3 -> 6)
+
+--칼럼명 변경
+alter table kbs rename column job_inwon to job_no;
+SELECT * FROM kbs;
+
+--칼럼 삭제
+alter table kbs drop(job_no);
+SELECT * FROM kbs;
+
+--데이터 이동: export / import: cmd창에서 작업
+SELECT * FROM dept;
+SELECT * FROM emp;
+--export
+--cmd 명령어 -> c:\work>exp scott/tiger tables=emp, dept file = scott.dmp
+drop table emp; --foreign key 때문에 emp부터 지워야한다.
+drop table dept;
+SELECT * FROM dept; -- table or view does not exist
+SELECT * FROM emp; --table or view does not exist
+--import: 대상 테이블이 없는 상태에서 가능
+--cmd 명령어 -> c:\work>imp scott/tiger tables=emp, dept file = scott.dmp
+SELECT * FROM dept;
+SELECT * FROM emp;
+
+--테이블 삭제 관련 명령
+SELECT * FROM kbs;
+drop table kbs; --완전 삭제가 아니라 오라클 휴지통에 저장
+SELECT * FROM tab; --아래 휴지통 내용 보기와 비슷한 명령
+show recyclebin; --휴지통 내용을 볼 수 있다.(시간도 볼 수 있음)
+flashback table kbs to before drop; --테이블을 복원
+SELECT * FROM kbs; --복원된 테이블을 확인할 수 있다.
+purge recyclebin; --오라클 휴지통 비우기
+show recyclebin; --휴지통을 비워서 내용을 볼 수 없다.
+drop table kbs purge; --완전 삭제. 이런 경우 백업한 자료를 import하여 restore 해야한다.
+
+--SELECT문 연습-------------------------------------------------------
+create table buser(
+buser_no number(4) primary key,
+buser_name varchar2(10) not null,
+buser_loc varchar2(10),
+buser_tel varchar2(15));
+
+insert into buser values(10, '총무부', '서울', '02-100-111');
+insert into buser values(20,'영업부','서울','02-100-2222');
+insert into buser values(30,'전산부','서울','02-100-3333');
+insert into buser values(40,'관리부','인천','032-200-4444');
+
+SELECT * FROM buser; -- 입력확인
+
+create table sawon(
+sawon_no  number(4) primary key,
+sawon_name varchar2(10) not null,
+buser_num number(4) not null, -- 본래 FK를 넣는게 좋은 칼럼이나 연습의 진행상 뺐다.
+sawon_jik  varchar2(10) default '사원', 
+sawon_pay number,
+sawon_ibsail date default sysdate,
+sawon_gen  char(2));
+
+insert into sawon values(1,'홍길동',10,'사장',9900,'1999/09/01','남');
+insert into sawon values(2,'한국남',20,'부장',8200,'2003/12/03','남');
+insert into sawon values(3,'이순신',20,'과장',6500,'2011/03/03','남');
+insert into sawon values(4,'이미라',30,'대리',5500,'2010/11/04','여');
+insert into sawon values(5,'이순라',20,'사원',3000,'2013/08/05','여');
+insert into sawon values(6,'김이화',20,'사원',2950,'2014/08/05','여');
+insert into sawon values(7,'김부만',40,'부장',8000,'2004/01/05','남');
+insert into sawon values(8,'김기만',20,'과장',7000,'2009/01/01','남');
+insert into sawon values(9,'채송화',30,'대리',5500,'2011/03/02','여');
+insert into sawon values(10,'박치기',10,'사원',3700,'2014/03/02','남');
+insert into sawon values(11,'김부해',30,'사원',2900,'2015/09/06','남');
+insert into sawon values(12,'박별나',40,'과장',5300,'2010/03/05','여');
+insert into sawon values(13,'박명화',10,'대리',4900,'2012/05/01','남');
+insert into sawon values(14,'박궁화',40,'사원',2800,'2016/01/05','여');
+insert into sawon values(15,'채미리',20,'사원',3200,'2015/01/03','여');
+insert into sawon values(16,'이유가',10,'사원',3900,'2013/02/01','여');
+
+SELECT * FROM sawon;
+
+create table gogek(
+gogek_no  number(4) primary key,
+gogek_name  varchar2(10) not null,
+gogek_tel  varchar2(20),
+gogek_jumin char(14),
+gogek_damsano  number(4),
+CONSTRAINT FK_gogek_damsano foreign key(gogek_damsano) references sawon(sawon_no)
+);
+
+create sequence gogek_gogek_no_seq increment by 1 start with 1;
+
+insert into gogek values(gogek_gogek_no_seq.nextval,'이나라','02-535-2580','880612-1156789',1);
+insert into gogek values(gogek_gogek_no_seq.nextval,'김혜순','02-375-6946','750101-1054225',3);
+insert into gogek values(gogek_gogek_no_seq.nextval,'최부자','02-692-8926','890305-1065773',3);
+insert into gogek values(gogek_gogek_no_seq.nextval,'김해자','032-393-6277','870412-2028677',1);
+insert into gogek values(gogek_gogek_no_seq.nextval,'차일호','02-294-2946','790509-1062677',2);
+insert into gogek values(gogek_gogek_no_seq.nextval,'박상운','02-631-1204','790623-1023566',6);
+insert into gogek values(gogek_gogek_no_seq.nextval,'이분','02-546-2372','880323-2558021',2);
+insert into gogek values(gogek_gogek_no_seq.nextval,'신영래','031-948-0283','790908-1063765',5);
+insert into gogek values(gogek_gogek_no_seq.nextval,'장도리','02-496-1204','870206-2063245',4);
+insert into gogek values(gogek_gogek_no_seq.nextval,'강나루','032-341-2867','780301-1070425',12);
+insert into gogek values(gogek_gogek_no_seq.nextval,'이영희','02-195-1764','880103-2070245',3);
+insert into gogek values(gogek_gogek_no_seq.nextval,'이소리','02-296-1066','910609-2046266',9);
+insert into gogek values(gogek_gogek_no_seq.nextval,'배용중','02-691-7692','820920-1052677',1);
+insert into gogek values(gogek_gogek_no_seq.nextval,'김현주','031-167-1884','880128-2062665',2);
+insert into gogek values(gogek_gogek_no_seq.nextval,'송사리','02-887-9344','830301-2013345',2);
+
+SELECT * FROM gogek;
+
+create table sangdata(code number primary key, sang varchar2(20) not null,
+su number, dan number);
+insert into sangdata values(1,'마우스',5,5000);
+insert into sangdata values(2,'물티슈',12,2000);
+insert into sangdata values(3,'볼펜',7,1000);
+
+SELECT * FROM sangdata;
+
+commit;
+
+SELECT * FROM sawon;
+SELECT * FROM gogek;
+SELECT * FROM buser;
+SELECT * FROM sangdata;
+
+-- select : DB server 로 부터 테이블의 자료를 클라이언트 컴퓨터로 읽기
+-- 형식 -> select [distinct][소유자명.테이블명.]칼럼명 [as 별명]...
+-- [into 테이블명] from 테이블명... where 조건 ... order by 정렬키[asc, desc]
+
+select sawon.sawon_no, sawon_name from sawon; --사실 from sawon이 있으므로 sawon.이 필요가없다
+SELECT sawon_name, sawon_no FROM sawon; -- 출력 순서를 변경가능하다.
+SELECT sawon_no as 사번, sawon_name as 이름, sawon_jik from sawon; --별명(alias)를 주면 출력시 칼럼명이 입력한 별명으로 나온다.
+SELECT 10, '안녕', 12/3 FROM dual; --dual은 가상의 테이블(더미 테이블). 확인되듯 SQL을 통해 연산도 된다.
+SELECT sysdate as 날짜 FROM dual;
+SELECT sawon_name || '님' AS 성함, sawon_pay || '만원', sawon_pay / 1000 as pay from sawon; -- ||은 문자열 더하기 연산자
+
+SELECT sawon_name, sawon_pay, sawon_pay * 0.02 as tax from sawon;
+SELECT &COLUMN_NAME FROM SAWON; --참고.
+SELECT * FROM sawon; -- * 은 모든 데이터라는 의미.
+-- SELECT는 DB에 있는 자료를 검색하여 이를 RAM에 저장한다. 출력은 따로 명령을 통해 수행되는데 지금은 SQL Developer가 출력을 수행해주는 것이다.
+SELECT sawon_no, sawon_name, buser_num, sawon_jik, sawon_pay, sawon_ibsail, sawon_gen FROM sawon;
+-- 위 문장은 바로 위 *을 활용한 문장과 같은 출력결과를 보인다.
+-- Programmer에게는 아래 경우가 권장되는데 아래 경우가 속도가 빠르기 때문이다.
+
+-- 정렬
+SELECT * FROM sawon ORDER BY sawon_pay ASC; -- ascending sort(오름차순 ㄱㄴㄷ순)
+SELECT * FROM sawon ORDER BY sawon_name ASC;
+SELECT * FROM sawon ORDER BY sawon_name; -- ASC는 생략해도 됨. 기본적으로 ASC로 수행하기 때문.
+SELECT * FROM sawon ORDER BY sawon_jik DESC; -- descending sort(내림차순 ㄱㄴㄷ순) 
+SELECT * FROM sawon ORDER BY buser_num; -- order by를 하면 그룹화가 된다. 즉, 중복값을 모아둔다. 여기선 부서번호 10번끼리 20번끼리 모여있다.
+SELECT * FROM sawon ORDER BY buser_num ASC, sawon_jik ASC, sawon_pay DESC; -- 정렬이 여러개면 왼쪽부터 진행된다.
+SELECT sawon_name, sawon_pay / 100 * 100 as pay FROM sawon ORDER BY pay; -- order by 대상으로 칼럼명 대신 별명(alias)를 적었다.
+SELECT sawon_name, sawon_jik, sawon_pay / 100 * 100 as pay FROM sawon ORDER BY 2 ASC, 1 DESC; -- 출력대상 칼럼의 순서를 order by의 대상으로 적을 수 있다.
+
+SELECT DISTINCT sawon_jik FROM sawon;  --DISTINCT는 중복 자료를 배제하고 출력해준다.
+SELECT DISTINCT sawon_gen, sawon_name FROM sawon; --이런 식으로하면 출력결과가 실질적으로 중복제거가 안되므로 오류는 없으나 쓰지 않는다.
+
+-- 레코드 제한
+SELECT * FROM sawon where sawon_jik = '대리'; --문자는 무조건 작은따옴표 필요
+SELECT * FROM sawon where sawon_no = 3;
+SELECT * FROM sawon where sawon_no = '5'; -- 숫자는 작은따옴표가 필수는 아님. 써도 상관은 없음
+SELECT * FROM sawon where sawon_ibsail = '2011-03-03'; --날짜는 무조건 작은따옴표 필요
+SELECT * FROM sawon where sawon_ibsail = '11/03/03';
+
+-- 날짜 형식 변경하기 (참고)---
+alter session set nls_date_format='YYYY-MM-DD';
+SELECT * FROM sawon;
+---------------------------
+
+SELECT * FROM sawon where sawon_no=5 or sawon_no=7;
+SELECT * FROM sawon where sawon_jik='대리' or sawon_jik='부장';
+SELECT * FROM sawon where sawon_jik='대리' or sawon_no=7;
+SELECT * FROM sawon where sawon_jik='대리' and sawon_no=9;
+SELECT * FROM sawon where sawon_jik='사원' and sawon_gen='여' and sawon_pay <= 3000;
+SELECT * FROM sawon where sawon_jik='사원' and sawon_gen='여' or sawon_pay <= 3000;
+        -- 연산자는 산술, 관계 , 논리 연산자 모두 사용이 가능하다.
+SELECT * FROM sawon WHERE sawon_jik='사원' AND sawon_gen = '남' or sawon_ibsail <= '2005-12-31';
+SELECT * FROM sawon WHERE sawon_jik='사원' AND (sawon_gen = '남' or sawon_ibsail <= '2005-12-31'); --괄호에 의해 or가 먼저 연산된다.
+
+-- BETWEEN 연산자
+SELECT * FROM sawon WHERE sawon_no >= 5 AND sawon_no <= 10;
+SELECT * FROM sawon WHERE sawon_no BETWEEN 5 AND 10; -- 두 문장은 같다.
+SELECT * FROM sawon WHERE sawon_ibsail BETWEEN '2000-1-1' AND '2005-12-31';
+SELECT * FROM sawon WHERE sawon_no BETWEEN 5 AND 10 order by buser_num asc;
+
+select * from sawon where sawon_no < 5 or sawon_no > 10;
+select * from sawon where not(sawon_no < 5 or sawon_no > 10); --질의는 긍적적인 형태
+select * from sawon where sawon_no not between 5 and 10;
+select * from sawon where not sawon_pay + 1000 >= 4000;
+
+select * from sawon where sawon_name = '홍길동';
+select * from sawon where sawon_name >= '박';
+select ascii('a'), ascii('b'), ascii('A'), ascii('가'), ascii('나') from dual;
+select * from sawon where sawon_name between '김' and '최';
+
+select * from sawon where sawon_jik = '대리' or sawon_jik = '과장' or sawon_jik='부장';
+
+select * from sawon where sawon_jik in('대리', '과장', '부장');
+select * from sawon where buser_num in(10, 30) order by buser_num;
+
+select * from sawon where sawon_name like '이%'; -- % : 이 기호 이후에는 어떤 문자든 가능
+select * from sawon where sawon_name like '이미%';
+select * from sawon where sawon_name like '%라';
+select * from sawon where sawon_name like '%순%';
+
+select * from sawon where sawon_name like '이%라';
+select * from sawon where sawon_name like '이_라'; -- _: 기호 한자리에 대해 아무글자나 가능
+select * from gogek where gogek_name like '__';
+select sawon_no, sawon_name, sawon_pay from sawon where sawon_pay like '3%';
+select sawon_no, sawon_name, sawon_pay from sawon where sawon_pay like '4___';
+
+select * from gogek where gogek_jumin like '%-1%';
+select * from gogek where gogek_jumin like '_______1%'; --남자 만 출력
+
+
+update sawon set sawon_jik = null where sawon_no=5;
+commit;
+select * from sawon where sawon_jik=null; --X
+select * from sawon where sawon_jik is null;
+select * from sawon where sawon_jik is not null;
+ 
+select sawon_no as 사번, sawon_name as 직원명, sawon_jik 직급, sawon_pay 연봉, sawon_pay / 12 as 보너스, sawon_ibsail 입사일 from sawon
+where sawon_jik in ('과장', '대리', '사원') and sawon_pay >= 3000 or sawon_ibsail between '2000-1-1' and '2010-12-31'
+order by sawon_jik, sawon_pay desc;
+
+select * from sangdata;
+
+--내장 함수------------------------------
+--단일행 함수 : 각 행에 대해 작업. 행 당 하나의 결과가 반환
+--문자함수
+select lower('HELLO'), lower('Hello'),upper('Hello') from dual;
+select initcap('hello world') from dual;
+select initcap(ename) from emp;
+select concat('Hello', 'world') from dual;
+select substr('Hello world', 3), substr('Hello world', 3, 2) from dual;
+select substr('Hello world', -3, 2) from dual;
+select instr('Hello world', 'o'), instr('Hello world', 'o', 6) from dual;
+select replace('010.111.1111','.','-') from dual;
+
+select * from sawon;
+--문) sawon 테이블에서 이름에 '이'가 포함된 직원이 있으면 '이'부터 두글자 출력
+select substr(sawon_name, instr(sawon_name,'이'), 2) from sawon where sawon_name like '%이%';
+
+--숫자함수
+select round(45.678, 2), round(45.678), round(45.678, 0), round(45.678, -1) from dual;
+select trunc(45.678, 2), trunc(45.678) from dual;
+select mod(15, 2) from dual;
+
+select sawon_name, sawon_pay, round(sawon_pay * 0.15) as donation from sawon;
+
+--날짜함수
+alter session set nls_date_format = 'YYYY-MM-DD';
+select sysdate, sysdate + 5, sysdate -365 from dual;
+select sawon_name, round((sysdate - sawon_ibsail) / 7) weeks from sawon;
+
+select sawon_name, sawon_ibsail, sawon_jik from sawon where (sysdate - sawon_ibsail) * 24 > 100000;
+
+select months_between('2017-7-6','2017-5-6') from dual;
+select months_between('2015-7-6','2017-5-6') from dual;
+
+select sawon_name, sawon_ibsail, round(months_between(sysdate, sawon_ibsail)) as wolcha from sawon;
+
+select add_months('2017-7-6', 3), add_months('2017-7-6', -3) from dual;
+
+select sysdate, last_day(sysdate), next_day(sysdate, '목') from dual;
+select round(sysdate, 'MONTH'), trunc(sysdate, 'MONTH') from dual;
+
+-- 형변환 함수
+select sawon_pay * '0.5' from sawon;  --자동 형변환
+
+-- 강제형변환 to_date, to_number, to_char
+select sysdate - to_date('2016-1-1') from dual;
+select to_char(sysdate, 'YYYY'), to_char(sysdate, 'MM'), to_char(sysdate, 'DD') from dual;
+select to_char(sysdate, 'YY'), to_char(sysdate, 'MM'), to_char(sysdate, 'DD') from dual;
+
+select to_char(sysdate, 'YYYY - MM - DD') from dual;
+
+select to_char(123, '99999'), to_char(123, '00000') from dual;
+select to_char(12345.00, '999,99.99'), to_char(12345.00, '000,00.00') from dual;
+select to_char(0.00, '999,99.99'), to_char(0.00, '000,00.00') from dual;
+select to_char(0.40, '99,990.00'), to_char(1230.40, '99,990.00') from dual;
+select to_number('123')from dual;
+
+-- 기타함수
+-- 순위 결정 함수
+select sawon_no, sawon_name, sawon_pay, rank() over(order by sawon_pay desc) from sawon;
+
+select sawon_no, sawon_name, sawon_pay, rank() over(order by sawon_pay asc) as rank, dense_rank() over(order by sawon_pay asc) as rank2 from sawon;
+
+-- null 처리 함수 : nvl(vall, value2)
+select sawon_name, sawon_jik, nvl(sawon_jik, '임시직') from sawon;
+
+-- null 처리 함수 : nvl2(val1, valu2, val3)
+select sawon_name, sawon_jik, nvl2(sawon_jik, '정규직', '임시직') from sawon;
+
+-- null 처리 함수 : nullif(val1, valu2)
+select sawon_name, sawon_jik, nullif(sawon_jik, '대리') from sawon;
+
+-- if - then - else 논리 적용 함수
+-- decode(칼럼명, 비교값, 반환값, 비교값, 반환값,...) as 별명 <-- oracle 전용
+select sawon_name, sawon_pay, decode(trunc(sawon_pay / 1000), 4, '사천대', 5, '오천대') as pay from sawon;
+
+select sawon_name, decode(sawon_gen, '남', 'M', '여', 'F') as gen from sawon;
+
+-- case문1
+-- case 표현식 when 비교값1 then 결과1 when 비교값2 then 결과2 ... else 결과 end as 별명
+select case 10 / 5 when 5 then '안녕' when 2 then '잘가' end as 결과 from dual;
+
+select sawon_name, sawon_jik, case sawon_jik when '사장' then sawon_pay * 0.05 when '부장' then sawon_pay * 0.04 when '과장' then sawon_pay * 0.03 else sawon_pay * 0.01 end as donation from sawon;
+
+-- case문2
+-- case when 표현식1 then 결과1 when 표현식2 then 결과2 ... else 결과 end as 별명
+
+select sawon_name, sawon_jik, case when sawon_gen = '남' then 'M' when sawon_gen = '여' then 'F' end as gender from sawon;
+
+select sawon_name, sawon_pay, case when sawon_pay >= 5000 then '우수연봉' when sawon_pay >= 3000 then '일반연봉' else '부족연봉' end as result from sawon where sawon_jik in ('사원', '대리', '과장');
+
+select * from sawon;
+
+select sawon_no as 사번, sawon_name as 이름, (2017 - substr(sawon_ibsail, 1, 4)) as 근무년, case when(2017 - substr(sawon_ibsail, 1, 4)) >= 10 then '최우수' when(2017 - substr(sawon_ibsail, 1, 4)) >= 5 then '우수' else '일반' end as 표현, case when (2017 - substr(sawon_ibsail, 1, 4)) >= 10 then round(sawon_pay * 0.1) when(2017 - substr(sawon_ibsail, 1, 4)) >= 5 then round(sawon_pay * 0.05) else round(sawon_pay * 0.03) end as 특별수당 from sawon where substr(sawon_ibsail,1, 4) >= 2000;
+select sysdate from dual;
+select sawon_name as 이름, sawon_jik as 직급, sawon_ibsail as 입사날짜, round(round(sysdate - sawon_ibsail)/ 30) as 근무달, case when (2017 - substr(sawon_ibsail, 1, 4)) >= 10 then '왕고참' when (2017 - substr(sawon_ibsail, 1, 4)) >= 5 then '고참' else '일반' end as 구분 from sawon where (substr(sawon_name, 1, 1) = '김' OR substr(sawon_name, 1, 1) = '이' OR substr(sawon_name, 1, 1) = '박' OR substr(sawon_name, 1, 1) = '홍') AND sawon_jik IS NOT NULL;
+
+select sawon_no as 번호, sawon_name as 이름, buser_num as 부서, case when(2017 - substr(sawon_ibsail, 1, 4)) >= 10 then 'O' when(2017 - substr(sawon_ibsail, 1, 4)) < 10 then 'X'  end as 장기근속, case when  buser_num = 10 then to_char(sawon_pay* (1.1), '999,999') when buser_num = 30 then to_char(sawon_pay * (1.3), '999,999') else to_char(sawon_pay, '999,999') end as 연봉, case when  buser_num = 10 then to_char(sawon_pay* (0.1), '999,999') when buser_num = 30 then to_char(sawon_pay * (0.3), '999,999') end as 인상연봉 from sawon;
+
+--복수 행 함수 : 여러 개의 행에 대해서 하나의 결과가 반환되는 함수
+-- NULL 운 연산시 무시된다.
+select sum(sawon_pay) as 합, avg(sawon_pay) as 평균, max(sawon_pay) as 최대, min(sawon_pay)as 최소 from sawon;
+
+update sawon set sawon_pay = null where sawon_no = 1;
+commit;
+select * from sawon;
+
+select avg(sawon_pay), avg(nvl(sawon_pay, 0)) from sawon;
+select sum(sawon_pay) /15, sum(sawon_pay) / 16 from sawon;
+select count(sawon_no), count(sawon_name), count(sawon_jik), count(sawon_pay), count(*) from sawon;
+
+select count(*) as 인원수 from sawon where sawon_gen = '남';
+select count(*) as 인원수 from sawon where sawon_pay >= 5000;
+
+-- 과장은 몇명?
+select count(*) from sawon where sawon_jik = '과장';
+-- 2015년 이후에 입사한 여자 직원 몇명, 급여평균?
+select count(*), avg(sawon_pay) from sawon where sawon_ibsail > '2015-1-1' AND sawon_gen = '여';
+-- group by : 소계 출력
+-- select 그룹칼럼명, 계산함수()...from 테이블명 where 조건 group by 그룹칼럼명 having 출력결과조건
+-- 그룹칼럼에 order by 할 수 없다. 단, 출력결과는 order by 가능
+
+-- 성별 급여의 평균, 인원 수 출력
+select sawon_gen, round(avg(sawon_pay)), count(*) from sawon group by sawon_gen;
+
+-- 부서별 급여합
+select buser_num, sum(sawon_pay) from sawon group by buser_num;
+
+-- 부서별 급여합, 급여합이 13000 이상
+select buser_num, sum(sawon_pay) from sawon group by buser_num having sum(sawon_pay) >= 13000;
+
+-- 부서별 급여합, 남자
+select buser_num, sum(sawon_pay) from sawon where sawon_gen = '남' group by buser_num;
+
+-- 부서별 급여합, 남자, 급여합이 8000 이상
+select buser_num, sum(sawon_pay) from sawon where sawon_gen = '남' group by buser_num having sum(sawon_pay) >= 8000;
+
+-- 주의
+select buser_num, sum(sawon_pay) from sawon order by sawon_pay asc group by buser_num;  
+select buser_num, sum(sawon_pay) from sawon group by buser_num order by sum(sawon_pay) asc; --이건 된다.
+
+--그룹함수 중첩
+select max(avg(sawon_pay)) from sawon where sawon_jik is not null group by sawon_jik;
+select * from sawon;
+--문1) 직급별 급여의 평균 (NULL인 직급 제외)
+  select avg(sawon_pay), sawon_jik from sawon where sawon_pay is not null group by sawon_jik;
+--문2) 부장,과장에 대해 직급별 급여의 총합
+select sawon_jik, sum(sawon_pay) from sawon where sawon_jik = '부장' OR sawon_jik = '과장' group by sawon_jik;
+--문3) 2003년 이전에 입사한 자료 중 년도별 직원수 출력
+select to_char(sawon_ibsail, 'YYYY') as 입사년, count(*) from sawon where sawon_ibsail <= '2003-1-1' group by sawon_ibsail;
+--문4) 직급별 성별 인원수, 급여합 출력 (NULL인 직급은 임시직으로 표현)
+select NVL(sawon_jik, '임시직') as 직급, count(*) as 인원수, sum(sawon_pay), sawon_gen as 성별 from sawon where sawon_gen = '남' OR sawon_gen = '여'  group by sawon_jik, sawon_gen; --?
+--문5) 부서번호 10,20에 대한 부서별 급여 합 출력
+select buser_num, sum(sawon_pay) from sawon where buser_num = 10 OR buser_num = 20 group by buser_num;
+--문6) 급여의 총합이 7000 이상인 직급 출력(NULL인 직급은 임시직으로 표현)
+select NVL(sawon_jik, '임시직'), sum(sawon_pay) from sawon group by sawon_jik having sum(sawon_pay) >= 7000;
+--문7) 직급별 인원수, 급여합계를 구하되 인원수가 3명 이상인 직급만 출력
+--        (NULL인 직급은 임시직으로 표현)
+select NVL(sawon_jik,'임시직') , count(*) as 인원수, sum(sawon_pay) from sawon group by sawon_jik having count(*) >= 3;
+
+-- join : 둘 이상의 테이블에서 데이터 추출
+
+-- cross join
+select sawon_name, buser_name from sawon, buser; -- oracle sql
+select sawon_name, buser_name from sawon cross join buser; -- ansi sql
+
+-- self join
+select a.sawon_name, a.sawon_jik from sawon a, sawon b where a.sawon_no = b.sawon_no;
+
+-- equi join (조건을 = )
+-- inner join
+select * from buser;
+insert into buser(buser_no, buser_name) values (50, '비서실');
+select * from sawon;
+alter table sawon modify buser_num number(4) null;
+update sawon set buser_num=null where sawon_no=1;
+commit;
+
+select sawon_name, buser_name from sawon, buser where buser_num = buser_no; --oracle
+
+select sawon_name, buser_name from sawon inner join buser on buser_num = buser_no;  --ansi
+
+-- left outer join
+select sawon_name, buser_name from sawon, buser where buser_num = buser_no(+); --oracle
+
+select sawon_name, buser_name from sawon left outer join buser on buser_num = buser_no;  --ansi
+
+-- right outer join
+select sawon_name, buser_name from sawon, buser where buser_num(+) = buser_no; --oracle
+
+select sawon_name, buser_name from sawon right outer join buser on buser_num = buser_no;  --ansi
+
+-- non equi join (조건을 = 이외의 연산자 사용)
+create table paygrade(grade number(1) primary key, lpay number, hpay number);
+insert into paygrade values(1, 0, 1999);
+insert into paygrade values(2, 2000, 2999);
+insert into paygrade values(3, 3000, 3999);
+insert into paygrade values(4, 4000, 4999);
+insert into paygrade values(5, 5000, 9999);
+select * from paygrade;
+
+select sawon_name, sawon_pay, grade from sawon, paygrade where sawon_pay >= lpay and sawon_pay <= hpay; --oracle
+select sawon_name, sawon_pay, grade from sawon inner join paygrade on sawon_pay >= lpay and sawon_pay <= hpay; --ansi
+
+-- 부서 내 근무자 출력(부서없는 직원은 제외)
+select buser_name, sawon_name, sawon_jik, buser_tel from sawon inner join buser on buser_num=buser_no order by buser_name asc;
+
+-- 관리고객이 있는 직원만 출력(고객자료도 출력)
+select sawon_no, sawon_name, gogek_name, gogek_tel from sawon inner join gogek on sawon_no = gogek_damsano order by sawon_name;
+
+-- 부서별 급여합
+select nvl(buser_name, '계약직') as 부서, sum(sawon_pay) as 급여합, round(avg(sawon_pay)) as 급여평균, count(*) as 인원수 from sawon, buser where buser_num=buser_no(+) group by buser_name; --oracle
+select nvl(buser_name, '계약직') as 부서, sum(sawon_pay) as 급여합, round(avg(sawon_pay)) as 급여평균, count(*) as 인원수 from sawon left outer join buser on buser_num = buser_no group by buser_name; --ansi
+
+--문1) 직급이 사원인 직원이 관리하는 고객 출력
+--출력 ==>  사번   사원명   직급      고객명    고객전화    고객성별
+--           3     한국인   사원       우주인    123-4567       남
+select sawon_no, sawon_name, sawon_jik, gogek_name, gogek_tel, case when gogek_jumin like '%-1%' then '남' when gogek_jumin like '%1%' then '여' end as 고객성별 from sawon inner join gogek on sawon_no = gogek_damsano where sawon_jik = '사원' order by sawon_no;
+--문2) 직원별 고객 확보 수  -- GROUP BY 사용
+----    - 모든 직원 참여
+select sawon_name, count(gogek_name)as 고객수 from sawon left join gogek on sawon_no = gogek_damsano group by sawon_name;
+--문3) 고객이 담당직원의 자료를 보고 싶을 때 즉, 고객명을 입력하면,  담당직원 자료 출력  
+--        :    ~ WHERE GOGEK_NAME='강나루'
+--출력 ==>  직원명       직급
+--            한국인       사원
+select sawon_name as 직원명, sawon_jik 직급 from sawon inner join gogek on sawon_no = gogek_damsano where gogek_name = '강나루';
+--문4) 직원명을 입력하면 관리고객 자료 출력 
+--       : ~ WHERE SAWON_NAME='한국인'
+--출력 ==> 고객명   고객전화          주민번호           나이
+--         강나루   123-4567    700512-1234567        38
+select gogek_name 고객명, gogek_tel 고객번호, gogek_jumin as 주민번호, (to_char(sysdate, 'YYYY')+ 1 - case when gogek_jumin like '%-1%' then concat('19', substr(gogek_jumin, 1, 2)) when gogek_jumin like '%-2%' then concat('19', substr(gogek_jumin, 1, 2)) else concat('20', substr(gogek_jumin, 1, 2))END) as 나이 from sawon inner join gogek on sawon_no = gogek_damsano where sawon_name = '박별나';
+
+--세 개의 테이블 조인
+select sawon_name, buser_name, gogek_name from sawon,buser, gogek where buser_num = buser_no and sawon_no = gogek_damsano; --oracle
+
+select sawon_name, buser_name, gogek_name from sawon inner join buser on buser_num = buser_no inner join gogek on sawon_no = gogek_damsano; --ansi
+
+--문1) 총무부에서 관리하는 고객수 출력 (고객 30살 이상만 작업에 참여)
+--
+select buser_name, count(gogek_name) as 고객수 from sawon inner join buser on buser_num = buser_no inner join gogek on sawon_no = gogek_damsano where (to_char(sysdate, 'YYYY')+ 1 - concat('19', substr(gogek_jumin, 1, 2))) >= 30 AND buser_name = '영업부' group by buser_name;
+--문2) 부서명별 고객 인원수 (부서가 없으면 "무소속")
+-- 
+select NVL(buser_name, '무소속') as 부서명, count (gogek_no) as 고객수 from sawon full outer join buser on buser_num = buser_no left join gogek on sawon_no = gogek_damsano group by buser_name;
+--문3) 고객이 담당직원의 자료를 보고 싶을 때 즉, 고객명을 입력하면     담당직원 자료 출력  
+--        :    ~ WHERE GOGEK_NAME='강나루'
+--출력 ==>  직원명    직급   부서명  부서전화    성별
+-- 
+select sawon_name, sawon_jik, buser_name, buser_tel, sawon_gen from sawon left outer join buser on buser_num = buser_no inner join gogek on sawon_no = gogek_damsano where gogek_name = '이나라'; 
+--문4) 부서와 직원명을 입력하면 관리고객 자료 출력
+--        ~ WHERE BUSER_NAME='영업부' AND SAWON_NAME='이순신'
+--출력 ==>  고객명    고객전화      성별
+--                 강나루   123-4567       남
+select gogek_name, gogek_tel, case when gogek_jumin like '%-1%' then '남' when gogek_jumin like '%-2%' then '여' end as 성별 from sawon left outer join buser on buser_num = buser_no inner join gogek on sawon_no = gogek_damsano where buser_name = '영업부' AND sawon_name = '이순신'; 
+
+select sawon_no, sawon_name, sawon_jik, buser_name, buser_tel from sawon left outer join buser on buser_num = buser_no order by sawon_no;
+select sawon_name, gogek_no, gogek_name, gogek_tel, case when gogek_jumin like '%-1%' then '남' when gogek_jumin like '%1%' then '여' end as 성별 from sawon full outer join buser on buser_no = buser_num full outer join gogek on sawon_no = gogek_damsano; 
+
+-- union: 구조가 일치하는 두 개 이상의 테이블 자료 합쳐서 보기
+create table pum1(bun int, pummok varchar2(20));
+insert into pum1 values(1, '귤');
+insert into pum1 values(2, '바나나');
+insert into pum1 values(3, '사과');
+insert into pum1 values(50, '레몬');
+select * from pum1;
+
+create table pum2(num int, swangpum varchar2(20));
+insert into pum2 values(10, '수박');
+insert into pum2 values(20, '참외');
+insert into pum2 values(30, '토마토');
+insert into pum2 values(40, '딸기');
+insert into pum2 values(50, '레몬');
+select * from pum2;
+
+select bun as 번호, pummok as 품목 from pum1 union select nun, swangpum from pum2;
+
+select bun as 번호, pummok as 품목 from pum1 union all select nun, swangpum from pum2;
+
+select bun as 번호, pummok as 품목 from pum1 minus select nun, swangpum from pum2;
+
+select bun as 번호, pummok as 품목 from pum1 intersect select nun, swangpum from pum2;
+
+-- 직원의 이름과 고객의 이름 출력
+select sawon_name from sawon union select gogek_name from gogek;
+
+-- 고객을 관리하는 직원목록 출력
+select sawon_no, sawon_name from sawon where sawon_no in(select distinct gogek_damsano from gogek);
+
+select sawon_no, sawon_name from sawon where sawon_no in (select sawon_no from sawon intersect select gogek_damsano from gogek);
+
+-- 고객을 관리하지 않는 직원목록 출력
+select sawon_no, sawon_name from sawon where sawon_no in (select sawon_no from sawon minus select gogek_damsano from gogek);
+
+-- merge : 구조가 일치하는 두 개 이상의 테이블 하나로 합치기
+create table sa1 as select sawon_no, sawon_name, sawon_pay from sawon where sawon_no <= 10; -- 기존 테이블로 새 테이블 작성
+
+select * from sa1;
+desc sa1;
+insert into sa1 values(100, '이슬비', 5000);
+insert into sa1 values(200, '소나기', 5500);
+
+
+create table sa2 as select sawon_no, sawon_name, sawon_pay from sawon where sawon_no <= 10 and sawon_jik = '사원';
+
+select * from sa2;
+insert into sa2 values(300, '가나다', 6500);
+
+merge into sa1 a using sa2 b on(a.sawon_no = b.sawon_no) when matched then update set a.sawon_name = b.sawon_name, a.sawon_pay = b.sawon_pay when not matched then insert values(b.sawon_no, b.sawon_name, b.sawon_pay);
+
+select * from sa1;
+select * from sa2;
+
+-- subquery: 질의 속에 질의가 있는 형태(일반적으로 안쪽질의의 결과를 바깥쪽에서 참조)
+-- 박치기 직원과 직급이 같은 직원은?
+select * from sawon;
+select sawon_jik from sawon where sawon_name='박치기'; --문장1
+select * from sawon where sawon_jik = '사원'; --문장2
+-- 문장1 + 문장2
+select * from sawon where sawon_jik = (select sawon_jik from sawon where sawon_name='박치기');
+
+-- 직급이 대리중 가장 먼저 입사한 사람은?
+select min(sawon_ibsail) from sawon where sawon_jik = '대리';
+select * from sawon where sawon_ibsail = '2010/11/4';
+
+select * from sawon where sawon_ibsail = (select min(sawon_ibsail) from sawon where sawon_jik = '대리'); --X
+
+select * from sawon where sawon_jik = '대리' and sawon_ibsail = (select min(sawon_ibsail) from sawon where sawon_jik = '대리'); --O
+
+--담당직원이 한국남과 같은 고객자료 출력
+select * from gogek where gogek_damsano = (select sawon_no from sawon where sawon_name = '한국남');
+
+-- 고객 중 김현주와 나이가 같은 고객 출력
+select * from gogek where substr(gogek_jumin, 1, 2) = (select substr(gogek_jumin, 1, 2) from gogek where gogek_name = '김현주');
+
+-- 인천에서 근무하는 직원 출력
+select * from sawon where buser_num =(select buser_no from buser where buser_loc = '인천');
+
+-- 인천 이외의 지역에서 근무하는 직원 출력
+select * from sawon where buser_num in (select buser_no from buser where not buser_loc = '인천');
+
+--3번 직원과 직급이 같고, 직급이 사원인 직원의 평균 연봉보다 급여가 많은 사람 출력
+select sawon_no, sawon_name, sawon_pay from sawon where sawon_jik = (select sawon_jik from sawon where sawon_no = 3) and sawon_pay > (select avg(sawon_pay) from sawon where sawon_jik = '사원');
+
+--SAWON, BUSER, GOGEK 테이블을 사용한다.
+--문1) 2000년 이후에 입사한 남자 중 급여를 가장 많이 받는 직원은?
+select * from sawon;
+select * from sawon where sawon_ibsail >= '2000-01-01' and sawon_pay = (select max(sawon_pay) from sawon where sawon_gen = '남');
+--문2)  평균급여보다 급여를 많이 받는 직원은?
+select * from sawon where sawon_pay > (select avg(sawon_pay) from sawon);
+--문3) '한국남' 직원의 입사 이후에 입사한 직원은?
+select * from sawon where sawon_ibsail > (select sawon_ibsail from sawon where sawon_name = '한국남');
+--문4) 2000 ~ 2005 사이에 입사한 총무부,영업부,전산부 직원 중 급여가 가장 적은 사람은?
+--       (직급이 NULL인 자료는 작업에서 제외)
+select * from buser; 
+select * from sawon where sawon_pay = (select min(sawon_pay) from sawon 
+where buser_num in (select buser_no from buser where not buser_name = '비서') 
+and buser_num in (select buser_no from buser where not buser_name = '관리부'))
+and sawon_ibsail >= '00/01/01' and sawon_ibsail <= '05/01/01'; --?
+
+--select * from sawon
+----where buser_num in (select buser_no from buser where buser_name in ('영업부','총무부','전산부'))
+--and sawon_ibsail >= '2000-01-01' and sawon_ibsail <= '2005-12-31'
+--and sawon_pay = (select min(sawon_pay) from sawon
+--where buser_num in (select buser_no from buser
+--where buser_name in('영업부', '총무부','전산부'))
+--and sawon_ibsail >= '2000-01-01' and sawon_ibsail <= '2005-12-31')
+--and sawon_jik is not null;
+
+--문5) 이순라, 이순신과 직급이 같은 사람은 누구인가?
+select * from sawon where sawon_jik in (select sawon_jik from sawon where sawon_name = '이순라' or  sawon_name = '이순신');
+--문6) 과장 중에서 최대급여, 최소급여를 받는 사람은?
+select * from sawon where sawon_jik = '과장' and sawon_pay = (select max(sawon_pay) from sawon where sawon_jik = '과장') or sawon_pay = (select min(sawon_pay) from sawon where sawon_jik = '과장');
+--문7) 20번 부서의 최소급여보다 많은 사람은?
+select * from sawon where sawon_pay > (select min(sawon_pay) from sawon where buser_num = '20'); 
+--문8) 30번 부서의 평균급여보다 급여가 많은 '대리' 는 몇명인가?
+select count(*) from sawon where sawon_jik = '대리' and sawon_pay > (select avg(sawon_pay) from sawon where buser_num = '30');
+--문9) 고객을 확보하고 있는 직원들의 이름, 직급, 부서명을 입사일 별로 출력하라.
+select sawon_name, sawon_jik, buser_name from sawon left outer join buser on buser_no = buser_num where  from sawon left outer join gogek on sawon_no= gogek_damaso); --?
+
+--select sawon_name, sawon_jik, buser_name from sawon
+--left outer join buser on buser_num = buser_no
+--where sawon_no in (select distinct gogek_damsano from gogek) 
+--order by sawon_ibsail;
+--문10) 이순신과 같은 부서에 근무하는 직원과 해당 직원이 관리하는 고객 출력
+--(고객은 나이가 30 이하면 '청년', 40 이하면 '중년', 그 외는 '노년'으로 표시하고, 고객 연장자 부터 출력)
+--출력 ==>  직원명    부서명     부서전화     직급      고객명    고객전화    고객구분
+--          한송이    총무부     123-1111    사원      백송이    333-3333    청년   
+select sawon_name, buser_name, buser_tel, sawon_jik, gogek_name, gogek_tel,
+case when gogek_age <= 30 then '청년'
+when gogek_age <= 40 and gogek_age > 30 then '중년'
+else '노년' end as 고객구분 from sawon
+inner join buser on buser_no = buser_num left outer join gogek on gogek_damaso = sawon_no
+where buser_name = (select buser_name from buser where sawon_name = '이순신'); --?
+
+select sawon_name as 직원명, buser_name as 부서명,
+substr(buser_tel, -8, 8) as 부서전화,
+sawon_jik 직급, gogek_name 고객명,
+substr(gogek_tel, -8, 8) 고객전화, 
+case
+when to_char(sysdate,'YYYY')-(substr(gogek_jumin,1,2)+'1900')<=30 then '청년'
+when to_char(sysdate,'YYYY')-(substr(gogek_jumin,1,2)+'1900')<=40 then '중년'
+when to_char(sysdate,'YYYY')-(substr(gogek_jumin,1,2)+'1900')> 40 then '노년'
+end as 고객구분
+from sawon
+left outer join buser on buser_num = buser_no
+left outer join gogek on sawon_no = gogek_damsano
+where buser_num = (select buser_num from sawon where sawon_name = '이순신')
+order by to_char(sysdate, 'YYYY') - (substr(gogek_jumin,1,2)+1900+1);
+
+-- any all 연산자
+-- <any : sub query의 반환값 중 최대값 보다 작은 ~
+-- >any : sub query의 반환값 중 최소값 보다 큰 ~
+-- <all : sub query의 반환값 중 최소값 보다 작은 ~
+-- >all : sub query의 반환값 중 최대값 보다 큰 ~
+
+-- 대리의 최대값 보다 작은 연봉을 받는 직원은?
+select * from sawon where sawon_pay <any (select sawon_pay from sawon
+where sawon_jik = '대리');
+
+-- 30번 부서의 최고급여자보다 급여를 많이 받는 직원은?
+select * from sawon where sawon_pay >all (select max(sawon_pay) from sawon where buser_num = 30);
+
+-- 30번 부서의 최저급여자보다 급여를 많이 받는 직원은?
+select * from sawon where sawon_pay >any (select max(sawon_pay) from sawon where buser_num = 30);
+
+--총무부 직원이 관리하는 고객
+--sub query
+select * from gogek where gogek_damsano in (select sawon_no from sawon where buser_num = (select buser_no from buser
+where buser_name = '영업부'));
+
+-- join 
+select gogek_no, gogek_name,  gogek_tel from gogek inner join sawon on sawon_no=gogek_damsano
+inner join buser on buser_num=buser_no
+where buser_name = '영업부';
+
+-- inline view : from 절에 sub query 사용
+-- 전체평균급여와 최대급여 사이의 급여를 받는 직원은?
+select sawon_no, sawon_name, sawon_pay from sawon a, (select avg(sawon_pay) avgs, max(sawon_pay) maxs from sawon) b
+where a.sawon_pay between b.avgs and b.maxs;
+
+-- 각 부서별로 최고 급여를 받는 직원 출력
+select a.sawon_no, a.sawon_name, a.sawon_pay, a.buser_num from sawon a, (select buser_num, max(sawon_pay) maxpay from sawon group by buser_num) b
+where a.buser_num=b.buser_num and a.sawon_pay = b.maxpay;
+
+-- group by의 having절 안에 포함된 서브쿼리
+-- 부서별 평균급여 중 20번 부서의 평균급여보다 큰 자료만 출력
+select buser_num, avg(sawon_pay) from sawon group by buser_num having avg(sawon_pay) > (select avg(sawon_pay) from sawon where buser_num = 20);
+
+-- exists 연산자 사용 : 서브쿼리의 결과유무를 검사
+-- 직원이 있는 부서 출력
+select buser_name, buser_loc from buser bu
+where exists (select 'imsi' from sawon where buser_num = bu.buser_no);
+
+-- 직원이 없는 부서 출력
+select buser_name, buser_loc from buser bu
+where not exists (select 'imsi' from sawon where buser_num = bu.buser_no);
+
+-- 상관 서브쿼리 : 안쪽에서 바깥질의를 참조하고, 다시 안쪽질의결과를 바깥쪽에 참조
+-- 각 부서의 최대 급여자는?
+select * from sawon a where a.sawon_pay= (select max(b.sawon_pay) from sawon b where a.buser_num = b.buser_num);
+
+-- 급여 순위 3위 이내의 자료 출력
+select a.sawon_name, a.sawon_pay from sawon a
+where 3 > (select count(*) from sawon b where b.sawon_pay > a.sawon_pay)
+and sawon_pay is not null
+order by sawon_pay desc;
+
+-- sub query를 이용한 테이블 생성 및 자료입력
+create table test1 as select * from sawon; --pk는 복사되지 않음
+select * from test1;
+
+create table test2 as select * from sawon where 1=0; --구조만 복사
+select * from test2;
+insert into test2 select * from sawon where sawon_jik = '과장';
+insert into test2(sawon_no, sawon_name, buser_num) select sawon_no, sawon_name, buser_num from sawon where sawon_jik = '대리';
+select * from test2;
+
+create table test3 as select sawon_no bunho, sawon_name irum, sawon_pay pay from sawon where 1 = 0;
+select * from test3;
+
+--복수 테이블에 insert하기 
+create table test4 as select sawon_no, sawon_name, sawon_jik from sawon
+where 1 = 0;
+create table test5 as select sawon_no, sawon_name, sawon_pay, sawon_gen from sawon
+where 1 = 0;
+
+select * from test4;
+select * from test5; 
+
+insert all 
+into test4 values(sawon_no, sawon_name, sawon_jik)
+into test5 values(sawon_no, sawon_name, sawon_pay, sawon_gen)
+select sawon_no, sawon_name, sawon_jik, sawon_pay, sawon_gen from sawon 
+where buser_num = 10;
+
+select * from test4;
+-- update, delete 시 서브쿼리 사용
+update test4 set sawon_jik=(select sawon_jik from sawon where sawon_name = '박치기') where sawon_no = 13;
+
+-- 담당고객이 있는 직원 삭제
+delete from test4 where sawon_no in(select distinct gogek_damsano from gogek);
+
+-- rownum 을 이용하여 top-n을 할 수 있다. : 행이 읽혀진 순서를 기억
+-- 급여순위 5위 이내
+select rownum, sawon_name, sawon_pay from (select sawon_name, sawon_pay from sawon order by sawon_pay desc) where rownum <= 5;
+
+-- 가장 최근에 입사한 직원 3위 이내
+select rownum, sawon_name, sawon_ibsail from (select sawon_name, sawon_ibsail from sawon order by sawon_ibsail desc) where rownum <= 3;
+
+select sawon_no, sawon_name from sawon left outer join buser on buser_num = buser_no;
+select gogek_no, gogek_name, gogek_tel from sawon full outer join buser on buser_no = buser_num full outer join gogek on sawon_no = gogek_damsano;
+
+-- Transaction : 단위별 데이터 처리. 데이터의 일관성 보장.
+create table extab as select * from sawon;
+select * from extab;
+delete from extab where sawon_no >= 10;
+select * from extab;
+commit;
+
+delete from extab;
+select * from extab;
+rollback;
+
+-- 작업 단위
+select * from extab;
+update extab set sawon_pay = 20000 where sawon_no = 1;
+savepoint a;
+update extab set sawon_pay = 21000 where sawon_no = 2;
+rollback to savepoint a;
+select * from extab;
+rollback;
+update extab set sawon_pay = 22000 where sawon_no = 3;
+commit;
+select * from extab;
+
+-- deadlocks : 두 개의 작업이 서로의 진행을 막고 충돌하는 현상
+-- 해결책은 진행 중인 트랜젝션을 완료하면 된다.
+update extab set sawon_pay = 5555 where sawon_no = 5;
+
+-- view : 물리적인 테이블을 근거로 논리적인 가상 테이블을 만들어 사용
+--        물리적으로 자료를 갖고 있지 않으므로 별도 메모리를 사용하지 않음
+--       쿼리문 단순화, 보안 강화, 자료의 독립성 확보가 가능
+-- 형식) create [or replace] view 뷰파일명 as select문
+
+create table saw as select * from sawon;
+select * from saw;
+
+
+create view vi1 as select sawon_no, sawon_name, sawon_pay from saw where sawon_ibsail < '2010-12-31';
+
+delete from saw;
+select * from vi1;
+rollback;
+select * from vi1;
+
+create or replace view vi2 as 
+select * from saw where sawon_name like '김%' or sawon_name like '이%';
+
+select * from vi2;
+desc vi2;
+select sum(sawon_pay) from vi2;
+
+select view_name, text from user_views;
+
+rename saw to summer;
+select * from vi2;
+select * from vi1;
+rename summer to saw;
+select * from vi2;
+
+create view vi3 as select * from saw order by sawon_pay desc;
+select * from vi3;
+
+create view vi4 as select sawon_no, sawon_name from vi3 where sawon_pay >= 5000; --view로 view를 생성
+
+select * from vi3;
+update vi3 set sawon_name = '김치국' where sawon_name = '김부만';
+select * from vi3;
+delete from vi3 where sawon_name = '홍길동';
+select * from vi3;
+
+select * from saw;
+
+create view vi5 as select sawon_no, sawon_name, buser_num, sawon_pay from saw 
+where sawon_pay >= 5000;
+
+select * from vi5;
+insert into vi5 values(50, '손오공', 10, 6500);
+insert into vi5 values(60, '사오정', 20, 3500);
+select * from vi5;
+
+select * from saw;
+create view vi6 as select sawon_no, sawon_name, buser_num, sawon_pay from saw 
+where sawon_pay >= 5000 with read only; -- read only로 편집 불가
+
+select * from vi6;
+delete from vi6 where sawon_no = 2;
+
+create view vi7 as select sawon_name, sawon_pay * 10000 as ypay from saw;
+
+select * from vi7;
+update vi7 set ypay = 1234567 where sawon_name = '한국남'; --수정불가 (계산 칼럼)
+update vi7 set sawon_name = '김밤' where ypay = 82000000; --수정가능
+delete from vi7 where ypay = 82000000;
+delete from vi7 where sawon_name = '이미라';
+select * from vi7;
+
+select * from saw;
+
+create view vi8 as select sawon_jik, sum(sawon_pay) as hap, avg(sawon_pay) as ave from saw group by sawon_jik;
+
+select * from vi8;
+delete from vi8 where hap=18800; --x
+delete from vi8 where sawon_jik='과장'; --x
+
+create view vi9 as select sawon_no, sawon_name, buser_name, sawon_jik from saw inner join buser on buser_num = buser_no where buser_num in (10, 20);
+
+select * from vi9;
+
+create view vi10 as select distinct sawon_jik from saw;
+
+select * from vi10;
+
+drop view vi10;
+
+--문1) 사번  이름    부서  직급  근무년수  고객확보
+--        1   홍길동  영업부 사원     6             O   or  X
+--조건 : 직급이 없으면 임시직, 전산부 자료는 제외
+--위의 결과를 위한 뷰파일 v_exam1을 작성
+create view v_exam1 as select sawon_no, sawon_name, buser_name, NVL(sawon_jik, '임시직') as 직급, '17' - substr(sawon_ibsail,1,2) 근무년수,
+case
+when gogek_name 
+from saw left outer join buser on buser_num = buser_no left outer join gogek on gogek_damsano = sawon_no where not buser_name = ('전산부');
+select * from v_exam1;
+drop view v_exam1;
+
+--문2) 부서명   인원수
+--       영업부     7
+--조건 : 직원수가 가장 많은 부서 출력
+--위의 결과를 위한 뷰파일 v_exam2을 작성
+create view v_exam2 as select buser_name, count(sawon_name) 인원수 from sawon full outer join buser on buser_num = buser_no group by buser_name;
+select * from v_exam2;
+drop view v_exam2;
+--문3) 가장 많은 직원이 입사한 요일에 입사한 직원 출력
+--    직원명   요일     부서명   부서전화
+--    한국인  수요일    전산부   222-2222
+--위의 결과를 위한 뷰파일 v_exam3을 작성  
+--select to_char(sawon_ibsail,'DAY') from sawon;
+create view v_exam3 as select sawon_name, to_char(sawon_ibsail,'DAY') as 요일, buser_name, buser_tel from sawon left outer join buser on buser_num = buser_no;
+ select * from v_exam3;
+ drop view v_exam3;
+ 
+ -- 사용자(계정, id, account) 생성 및 권한
+ -- 관리자(system, sys 등) 권한이 있을 경우 가능
+ show user;
+ select * from session_privs; --현재 사용자에게 부여한 권한 목록
+ 
+ -- synonym(동의어) : 객체에 대한 별명
+ 
+ select buser_no, buser_name, count(*) from sawon right outer join buser on buser_num = buser_no group by buser_no, buser_name having count(*) <= 3;
+ commit;
+ 
+ select * from aa;
+ 
+ --원격접속
+ 
+ --PL/SQL (Stored procedure) : 카페 40번 글 참조
+-- PL/SQL(Procedural Language/SQL)의 약어
+--오라클 DB 환경에서 실행되는 절차적인 데이터베이스 프로그래밍 언어
+--표준 SQL과 3세대 언어의 강력한 일부 기능을 포함한 SQL의 확장 언어
+--PL/SQL에서는 프로그램 단위를 블록(block)이라 부르며, 애플리케이션 로직들을 작성
+
+--오라클 연습 도구에서 콘솔로 출력
+set serveroutput on;  --오라클 연습 도구에서 콘솔로 출력 
+declare
+  no number := 0;
+begin 
+  no := 100 + 200 / 0;
+  dbms_output.put_line('no는 ' || no);
+exception when others then 
+  dbms_output.put_line('err');
+end;
+
+create table abc(bun number, munja varchar2(20), su number);
+-- 변수 선언1 - 테이블형
+declare 
+ v_a sawon%rowtype;
+begin
+  select * into v_a from sawon where sawon_no = 7;
+  insert into abc values(v_a.sawon_no, v_a.sawon_name, v_a.sawon_pay);
+  dbms_output.put_line(v_a.sawon_no || ' ' || v_a.sawon_name);
+end;
+
+select * from abc;
+
+-- 변수 선언2 - 칼럼형
+declare
+ a sawon.sawon_no%type;
+ b sawon.sawon_name%type;
+ c sawon.sawon_pay%type;
+begin
+  select sawon_no, sawon_name, sawon_pay into a,b,c from sawon where sawon_no = 8;
+  dbms_output.put_line(a || ' ' || b || ' ' || c);
+end;
+
+-- 조건 판단문 if
+declare
+ v_a sawon%rowtype;
+ v_str varchar2(10);
+begin
+  select * into v_a from sawon where sawon_no = 9;
+  if(v_a.buser_num = 10) then 
+    v_str := concat(v_a.sawon_name, ' 10');
+  end if;
+  if(v_a.buser_num = 20) then 
+    v_str := concat(v_a.sawon_name, ' 20');
+  end if;
+  if(v_a.buser_num = 30) then 
+    v_str := concat(v_a.sawon_name, ' 30');
+  elsif(v_a.buser_num = 40) then 
+    v_str := concat(v_a.sawon_name, ' 40');
+  end if;
+  dbms_output.put_line(v_str);
+end;
+
+-- 반복문 for
+declare
+ dan number(2) := 2;
+ i number(2) := 0;
+ tot number(2) := 0;
+begin
+  for i in 1..9 loop
+    tot := dan * i;
+    dbms_output.put_line(dan || '*' || i || '=' || tot);
+  end loop;
+end;
+
+-- 반복문 loop
+declare
+ v_count number := 1;
+begin
+  loop
+    dbms_output.put_line(v_count);
+    exit when v_count = 10;
+    v_count := v_count + 1;
+  end loop;
+end;
+
+-- 반복문 while loop
+declare
+ v_count number := 1;
+begin
+  while(v_count <= 10) loop
+    dbms_output.put_line(v_count);
+    v_count := v_count + 1;
+  end loop;
+end;
+
+-- 블럭은 블럭을 포함할 수 있다.
+declare
+ v_a number := 0;
+ v_b number := 0;
+begin
+  while v_a < 10 loop
+   v_a := v_a + 1;
+   if mod(v_a, 2) = 0 then
+     v_b := v_b + 10;
+     dbms_output.put_line(v_a || '는 짝수' || ' ' || v_b);
+    else
+     v_b := v_b + 3;
+     dbms_output.put_line(v_a || '는 홀수' || ' ' || v_b);
+    end if;
+  end loop;
+end;
+
+-- cursor(커서) : 사용자가 실행한 select 문의 단위를 의미
+-- 한 개의 레코드에 대한 수행은 암시적인 커서로서 사용하지 않는다.
+-- 두 개 이상의 레코드에 처리는 명시적으로 커서를 사용한다.
+--형식)
+--cursor 커서명~
+--open 커서명
+--fetch 커서명 into 변수...
+--close 커서명
+
+declare
+ no number;
+ name varchar2(10);
+ pay number;
+ cursor cur is select sawon_no, sawon_name, sawon_pay
+ from sawon where sawon_jik = '과장';
+begin 
+  open cur;
+  loop 
+    fetch cur into no, name, pay;
+    exit when cur%notfound;
+    dbms_output.put_line(no || '' || name  || ' ' || pay);
+  end loop;
+  close cur;
+end;
+
+-- open, fetch, close 없는 커서 처리
+declare
+ saw sawon%rowtype;
+ cursor cur is select sawon_no, sawon_name, sawon_pay
+ from sawon where sawon_jik = '사원';
+ begin
+  for saw in cur loop 
+    exit when cur%notfound;
+    dbms_output.put_line(saw.sawon_no || ' ' || saw.sawon_name  || ' ' || saw.sawon_pay);
+  end loop;
+ end;
+ 
+ -- 사용자 정의 함수 작성
+ create or replace function func1(no number) return number is 
+  pay number;
+begin 
+  pay := 0;
+  select sawon_pay * 0.1 into pay from sawon where sawon_no = no;
+  return pay;
+end;
+
+select func1(5) from dual;
+select sawon_no, sawon_name, sawon_pay, func1(sawon_no) as tex from sawon;
+
+-- 부서명 얻기 함수 작성
+ create or replace function func2(bno number) return varchar2 is
+  busername varchar2(10);
+  begin 
+    select buser_name into busername from buser where buser_no = bno;
+    return busername;
+  end;
+  
+  select func2(10) from dual;
+  --함수
+  select sawon_no, sawon_name, buser_num, func2(buser_num) as busername from sawon;
+  --서브쿼리
+    select sawon_no, sawon_name, buser_num, (select buser_name from buser where buser_no=buser_num) as busername from sawon;
+    
+  --문제) 고객번호를 입력하는 함수 func3(5)를 작서한다. 결과는 나이 출력.
+  create or replace function func3(gno number) return varchar2 is
+  age varchar2(10);
+  begin
+   select ('117' - substr(gogek_jumin,1,2) + 1) into age from gogek where gogek_no = gno;
+   return age;
+   end;
+   
+   select gogek_name, gogek_no, func3(gogek_no) as 나이 from gogek;
+   
+   --문제) 함수호출 시 func4(부서번호)와 같이 호출하여
+   -- 부서가 없으면 '임시직', 있으면 해당 부서명 출력
+    create or replace function func4(buno number) return varchar2 is
+    bresult varchar2(20);
+    begin
+      if(buno is null) then
+        bresult := '임시직';
+      else
+        select buser_name into bresult from buser where buser_no = buno;
+      end if;
+       return bresult;
+       end;
+       
+   
+      
+  -- procedure : 이름을 가진 PL/SQL 블럭
+  -- 형식 :
+  -- create [or replace] procedure 프로시저명(매개변수...) is
+  -- 선언
+  -- begin
+  -- ~
+  -- end;
+  
+  create table sawon2 as select * from sawon;
+  select * from sawon2;
+  
+  --ex1
+  create or replace procedure up_a is
+  begin
+   delete from sawon2 where sawon_no = 1;
+  end;
+  
+  execute up_a;
+  
+  select * from sawon2;
+  
+  --ex2 : 매개변수가 있는 삭제
+    create or replace procedure up_b(no sawon2.sawon_no%type) is
+  begin
+   delete from sawon2 where sawon_no = no;
+  end;
+  
+  execute up_b(2);
+   execute up_b(3);
+ select * from sawon2;  
+ 
+ --ex3 : 매개변수가 있는 수정
+     create or replace procedure up_c(no sawon2.sawon_no%type, jik sawon2.sawon_jik%type) is
+  begin
+   update sawon2 set sawon_jik = jik where sawon_no = no;
+  end;
+  
+  execute up_c(4, '이사');
+  select * from sawon2;
+  
+  -- crud 경험용 테이블 작성 후 작업
+  create table person(id number(3) primary key, name varchar2(10) not null,
+  weight number(3));
+  insert into person values(1, '홍길동' , 67);
+  insert into person values(2, '홍두깨' , 77);
+  insert into person values(3, '홍당무' , 87);
+  select * from person;
+  commit;
+  
+  create table errtab(ss varchar2(50));
+  
+  -- insert procedure 작성
+  create or replace procedure pro1(no number, name varchar2, wei number) is
+  begin
+    insert into person values(no, name, wei);
+    commit;
+    exception when others then
+    dbms_output.put_line('에러라네');
+    insert into errtab values('에러라네');
+  end;
+  
+  execute pro1(4, '관우' , 98);
+  execute pro1(5, '장비' , 120);
+  execute pro1(6, '조조' , 78);
+  select * from person;
+  select * from errtab;
+  
+    -- update procedure 작성
+  create or replace procedure pro2(no person.id%type, irum person.name%type, wei person.weight%type) is
+  begin
+    update person set name = irum, weight = wei where id = no;
+    commit;
+    exception when others then
+    dbms_output.put_line('수정 에러라네');
+    rollback;
+  end;
+  
+  execute pro2(3, '김밥', 78);
+  select * from person;
+  
+  create or replace procedure pro3(no person.id%type) is
+  begin
+    delete from person where id = no;
+    commit;
+    exception when others then
+    dbms_output.put_line('수정 에러라네');
+    rollback;
+  end;
+  
+  execute pro3(3);
+  select * from person;
+  
+  -- select procedure 작성1
+   create or replace procedure pro4(no person.id%type) is
+    pid person.id%type;
+    pname person.name%type;
+    pweight person.weight%type;
+  begin
+  select* into pid,pname,pweight from person where id=no;
+  dbms_output.put_line(pid || ' ' || pname || ' ' || pweight);
+  end;
+  
+  execute pro4(2);
+  
+    -- select procedure 작성2
+   create or replace procedure pro5 is
+    cursor cur is select * from person;
+    pid person.id%type;
+    pname person.name%type;
+    pweight person.weight%type;
+  begin
+  open cur;
+  loop
+    fetch cur into pid,pname,pweight;
+    exit when cur%notfound;
+    dbms_output. put(pid);
+    dbms_output. put(pname);
+    dbms_output. put_line(pweight);
+  end loop;
+  close cur;
+end;
+  
+  execute pro5;
+  
+      -- select procedure 작성3
+   create or replace procedure pro6 is
+    cursor cur is select * from person;
+    begin 
+    for per in cur loop
+        dbms_output. put(per.id);
+    dbms_output. put(per.name);
+    dbms_output. put_line(per.weight);
+    end loop;
+    end;
+    
+    execute pro6;
+    select * from buser;
+    select sawon_no, sawon_name, sawon_pay, sawon_ibsail, count(*) from sawon left outer join gogek on sawon_no = gogek_damsano left outer join buser on buser_num = buser_no where buser_name = '영업부' group by sawon_no, sawon_name, sawon_pay, sawon_ibsail; 
+    select * from sawon left outer join buser on buser_num = buser_no where buser_name = '총무부';
+  
